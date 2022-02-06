@@ -9,6 +9,7 @@ using System.Threading.Tasks;
 using System.Xml.Serialization;
 using NStack;
 using Terminal.Gui;
+using System.CommandLine;
 
 namespace Tubular
 {
@@ -32,19 +33,19 @@ namespace Tubular
         
         private static async Task Main(string[] args)
         {
-            bool noUpdate = false, runConfig = false;
-            if(args.Length > 0)
-            {
-                noUpdate = args.Contains("--noupdate");
-                runConfig = args[0] == "config";
-            }
-
-            if(runConfig)
-            {
-                Process.Start(new ProcessStartInfo(feedsPath){ UseShellExecute = true });
-                return;
-            }
+            var noUpdate = new Option<bool>("--no-update", () => false, "Don't update feeds, just read from cache");
+            var filter = new Option(new[]{"--filter", "-f"}, "Filter channels");
             
+            var runConfig = new Command("config", "Open config file in text editor");
+            runConfig.SetHandler(() => Process.Start(new ProcessStartInfo(feedsPath){ UseShellExecute = true }));
+
+            var rootCommand = new RootCommand("List videos from youtube rss feeds in chronological order"){ noUpdate, runConfig, filter };
+            rootCommand.SetHandler<bool, string>(Run, noUpdate, filter);
+            await rootCommand.InvokeAsync(args);
+        }
+
+        private static async Task Run(bool noUpdate, string filter)
+        {
             var feeds = await GetFeeds(noUpdate);
             
             int padding = 0;

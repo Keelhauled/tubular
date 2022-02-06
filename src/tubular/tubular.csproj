@@ -14,6 +14,7 @@
     </PropertyGroup>
 
     <ItemGroup>
+      <PackageReference Include="System.CommandLine" Version="2.0.0-beta3.22103.3" />
       <PackageReference Include="Terminal.Gui" Version="1.4.0" />
     </ItemGroup>
 
