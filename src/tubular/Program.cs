@@ -28,34 +28,32 @@ namespace Tubular
 
         private static readonly HttpClient httpClient = new(new HttpClientHandler{ MaxConnectionsPerServer = 2 });
         private static readonly XmlSerializer xmlSerializer = new(typeof(Feed));
-
-        private static readonly TimeSpan maxTimeToShow = TimeSpan.FromDays(365);
         
         private static async Task Main(string[] args)
         {
-            var noUpdate = new Option<bool>("--no-update", () => false, "Don't update feeds, just read from cache");
-            var filter = new Option(new[]{"--filter", "-f"}, "Filter channels");
+            var noUpdate = new Option<bool>(new[]{"--no-update", "-u"}, "Don't update feeds, just read from cache");
+            var filter = new Option<string?>(new[]{"--filter", "-f"}, "Filter channels by their name");
+            var maxTime = new Option<int>(new[]{"--maxtime", "-t"}, () => 365, "How many days of videos to show");
             
             var runConfig = new Command("config", "Open config file in text editor");
             runConfig.SetHandler(() => Process.Start(new ProcessStartInfo(feedsPath){ UseShellExecute = true }));
 
-            var rootCommand = new RootCommand("List videos from youtube rss feeds in chronological order"){ noUpdate, runConfig, filter };
-            rootCommand.SetHandler<bool, string>(Run, noUpdate, filter);
+            var rootCommand = new RootCommand("List videos from youtube rss feeds in chronological order"){ noUpdate, runConfig, filter, maxTime };
+            rootCommand.SetHandler<bool, string, int>(Run, noUpdate, filter, maxTime);
             await rootCommand.InvokeAsync(args);
         }
 
-        private static async Task Run(bool noUpdate, string filter)
+        private static async Task Run(bool noUpdate, string? filter, int maxTime)
         {
-            var feeds = await GetFeeds(noUpdate);
+            var feeds = await GetFeeds(noUpdate, filter);
             
             int padding = 0;
             var videos = feeds.SelectMany(x =>
             {
                 if(x.Author.Name.Length > padding)
                     padding = x.Author.Name.Length;
-                
                 return x.Entry;
-            }).Where(x => x.Published > DateTime.Now - maxTimeToShow).OrderByDescending(x => x.Published).ToList();
+            }).Where(x => x.Published > DateTime.Now - TimeSpan.FromDays(maxTime)).OrderByDescending(x => x.Published).ToList();
             
             var titles = videos.Select(x => $"[{x.Published:yy/MM/dd}] {x.Author.Name.PadRight(padding)} {x.Title}").ToList();
 
@@ -85,10 +83,12 @@ namespace Tubular
             }
         }
 
-        private static async Task<IEnumerable<Feed>> GetFeeds(bool noUpdate)
+        private static async Task<IEnumerable<Feed>> GetFeeds(bool noUpdate, string? filter)
         {
+            filter ??= "";
+
             if(!File.Exists(feedsPath))
-                throw new FileNotFoundException(feedsPath);
+                throw new FileNotFoundException("Run \"tubular config\" to set up the feeds file", feedsPath);
             
             var feedLines = await File.ReadAllLinesAsync(feedsPath);
             var feeds = new ConcurrentBag<Feed>();
@@ -98,6 +98,9 @@ namespace Tubular
                 var id = split[0].Trim();
                 var url = split[1].Trim();
                 var cachePath = Path.Combine(cache.FullName, id);
+
+                if(!id.ToLower().Contains(filter.ToLower()))
+                    return;
 
                 string? xml = null;
                 if(noUpdate && File.Exists(cachePath))
