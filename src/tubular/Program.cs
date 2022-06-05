@@ -68,11 +68,22 @@ namespace Tubular
                     Height = Dim.Fill()
                 };
                 top.Add(list);
+                
                 list.OpenSelectedItem += x =>
                 {
                     var entry = videos[x.Item];
-                    Utils.StartRedirectedProcess("/bin/mpv", entry.Link.Href);
-                    MessageBox.Query("Info", $"Starting video:\n{entry.Title}", "OK");
+                    var val = MessageBox.Query("", $"{entry.Author.Name}\n{entry.Title}\n{entry.Published}", "Play", "Link", "Cancel");
+                    switch(val)
+                    {
+                        case 0:
+                            MessageBox.Query("", $"Playing video:\n{entry.Title}", "OK");
+                            Utils.StartRedirectedProcess("/bin/mpv", entry.Link.Href);
+                            break;
+                        
+                        case 1:
+                            Process.Start(new ProcessStartInfo(entry.Link.Href){ UseShellExecute = true });
+                            break;
+                    }
                 };
 
                 Application.Run();
