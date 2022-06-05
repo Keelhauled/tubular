@@ -7,7 +7,6 @@ using System.Linq;
 using System.Net.Http;
 using System.Threading.Tasks;
 using System.Xml.Serialization;
-using NStack;
 using Terminal.Gui;
 using System.CommandLine;
 
@@ -16,6 +15,7 @@ namespace Tubular
     public static class Program
     {
         private const string PROGRAM_NAME = "tubular";
+        private const string BASE_URL = "https://www.youtube.com/feeds/videos.xml?";
         
         private static readonly string configEnv = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
         private static readonly string? XDG_CONFIG_HOME = Environment.GetEnvironmentVariable("XDG_CONFIG_HOME");
@@ -70,9 +70,9 @@ namespace Tubular
                 top.Add(list);
                 list.OpenSelectedItem += x =>
                 {
-                    var entry = videos[list.SelectedItem];
+                    var entry = videos[x.Item];
                     Utils.StartRedirectedProcess("/bin/mpv", entry.Link.Href);
-                    MessageBox.Query("Info", $"Starting video:\n{entry.Title}", ustring.Make("OK"));
+                    MessageBox.Query("Info", $"Starting video:\n{entry.Title}", "OK");
                 };
 
                 Application.Run();
@@ -96,7 +96,7 @@ namespace Tubular
             {
                 var split = line.Split(',');
                 var id = split[0].Trim();
-                var url = split[1].Trim();
+                var url = $"{BASE_URL}{split[1].Trim()}";
                 var cachePath = Path.Combine(cache.FullName, id);
 
                 if(!id.ToLower().Contains(filter.ToLower()))
