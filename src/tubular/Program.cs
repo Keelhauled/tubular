@@ -83,6 +83,10 @@ namespace Tubular
                         case 1:
                             Process.Start(new ProcessStartInfo(entry.Link.Href){ UseShellExecute = true });
                             break;
+                        
+                        case 2:
+                            Process.Start(new ProcessStartInfo(entry.Author.Uri){ UseShellExecute = true });
+                            break;
                     }
                 };
 
