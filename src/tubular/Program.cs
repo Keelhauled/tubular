@@ -35,7 +35,7 @@ namespace Tubular
             var filter = new Option<string?>(new[]{"--filter", "-f"}, "Filter channels by their name");
             var maxTime = new Option<int>(new[]{"--maxtime", "-t"}, () => 365, "How many days of videos to show");
             
-            var runConfig = new Command("config", "Open config file in text editor");
+            var runConfig = new System.CommandLine.Command("config", "Open config file in text editor");
             runConfig.SetHandler(() => Process.Start(new ProcessStartInfo(feedsPath){ UseShellExecute = true }));
 
             var rootCommand = new RootCommand("List videos from youtube rss feeds in chronological order"){ noUpdate, runConfig, filter, maxTime };
@@ -60,19 +60,25 @@ namespace Tubular
             try
             {
                 Application.Init();
-                var top = Application.Top;
-
-                var list = new ListView(titles)
-                {
-                    Width = Dim.Fill(),
-                    Height = Dim.Fill()
-                };
-                top.Add(list);
                 
-                list.OpenSelectedItem += x =>
+                var menuBar = new MenuBar(new[]{
+                    new MenuBarItem("_File", new[]{
+                        new MenuItem("_Quit", "", () => Application.RequestStop())
+                    }),
+                });
+
+                var videoList = new ListView(titles)
+                {
+                    X = 0,
+                    Y = 1,
+                    Width = Dim.Fill(),
+                    Height = Dim.Fill() - 1
+                };
+                
+                videoList.OpenSelectedItem += x =>
                 {
                     var entry = videos[x.Item];
-                    var val = MessageBox.Query("", $"{entry.Author.Name}\n{entry.Title}\n{entry.Published}", "Play", "Link", "Cancel");
+                    var val = MessageBox.Query("", $"{entry.Author.Name}\n{entry.Title}\n{entry.Published}", "Play", "Link", "Channel", "Cancel");
                     switch(val)
                     {
                         case 0:
@@ -89,7 +95,8 @@ namespace Tubular
                             break;
                     }
                 };
-
+                
+                Application.Top.Add(menuBar, videoList);
                 Application.Run();
             }
             finally
