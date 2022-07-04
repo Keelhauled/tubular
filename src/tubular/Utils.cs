@@ -1,5 +1,4 @@
 using System.Diagnostics;
-using System.IO;
 
 namespace Tubular
 {
@@ -7,9 +6,6 @@ namespace Tubular
     {
         public static void StartRedirectedProcess(string filepath, string args)
         {
-            if(!File.Exists(filepath))
-                throw new FileNotFoundException(filepath);
-            
             var proc = new Process
             {
                 StartInfo = new ProcessStartInfo

@@ -82,8 +82,8 @@ namespace Tubular
                     switch(val)
                     {
                         case 0:
+                            Utils.StartRedirectedProcess("mpv", entry.Link.Href);
                             MessageBox.Query("", $"Playing video:\n{entry.Title}", "OK");
-                            Utils.StartRedirectedProcess("/bin/mpv", entry.Link.Href);
                             break;
                         
                         case 1:
