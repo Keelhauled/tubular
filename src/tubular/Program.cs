@@ -43,6 +43,8 @@ namespace Tubular
             await rootCommand.InvokeAsync(args);
         }
 
+        private record Video(string title, Entry entry);
+
         private static async Task Run(bool noUpdate, string? filter, int maxTime)
         {
             var feeds = await GetFeeds(noUpdate, filter);
@@ -53,31 +55,24 @@ namespace Tubular
                 if(x.Author.Name.Length > padding)
                     padding = x.Author.Name.Length;
                 return x.Entry;
-            }).Where(x => x.Published > DateTime.Now - TimeSpan.FromDays(maxTime)).OrderByDescending(x => x.Published).ToList();
-            
-            var titles = videos.Select(x => $"[{x.Published:yy/MM/dd}] {x.Author.Name.PadRight(padding)} {x.Title}").ToList();
+            }).Where(x => x.Published > DateTime.Now - TimeSpan.FromDays(maxTime)).OrderByDescending(x => x.Published)
+              .Select(x => new Video($"[{x.Published:yy/MM/dd}] {x.Author.Name.PadRight(padding)} {x.Title}", x)).ToList();
+            var filtered = new List<Video>(videos);
 
             try
             {
                 Application.Init();
                 
                 var menuBar = new MenuBar(new[]{
-                    new MenuBarItem("_File", new[]{
-                        new MenuItem("_Quit", "", () => Application.RequestStop())
+                    new MenuBarItem("File", new[]{
+                        new MenuItem("Quit", "", () => Application.RequestStop())
                     }),
                 });
 
-                var videoList = new ListView(titles)
-                {
-                    X = 0,
-                    Y = 1,
-                    Width = Dim.Fill(),
-                    Height = Dim.Fill() - 1
-                };
-                
+                var videoList = new ListView(filtered.Select(x => x.title).ToList()){ X = 0, Y = 2, Width = Dim.Fill(), Height = Dim.Fill() - 1 };
                 videoList.OpenSelectedItem += x =>
                 {
-                    var entry = videos[x.Item];
+                    var entry = filtered[x.Item].entry;
                     var val = MessageBox.Query("", $"{entry.Author.Name}\n{entry.Title}\n{entry.Published}", "Play", "Link", "Channel", "Cancel");
                     switch(val)
                     {
@@ -95,8 +90,23 @@ namespace Tubular
                             break;
                     }
                 };
+
+                var filterText = new TextField(){ X = 0, Y = 1, Width = Dim.Fill(), Height = 1 };
+                filterText.TextChanged += x =>
+                {
+                    var text = filterText.Text.ToString()?.ToLowerInvariant();
+                    Debug.Assert(text != null, nameof(text) + " != null");
+                    filtered = videos.Where(y => y.title.ToLowerInvariant().Contains(text)).ToList();
+                    videoList.SetSource(filtered.Select(y => y.title).ToList());
+                };
+
+                var statusBar = new StatusBar(new []
+                {
+                    new StatusItem(Key.CtrlMask | Key.q, "~Ctrl+Q~ Quit", () => {}),
+                    new StatusItem(Key.f, "~F~ Filter", () => filterText.SetFocus())
+                });
                 
-                Application.Top.Add(menuBar, videoList);
+                Application.Top.Add(menuBar, filterText, videoList, statusBar);
                 Application.Run();
             }
             finally
