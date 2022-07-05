@@ -62,6 +62,7 @@ namespace Tubular
             try
             {
                 Application.Init();
+                Application.IsMouseDisabled = true;
                 
                 var menuBar = new MenuBar(new[]{
                     new MenuBarItem("File", new[]{
