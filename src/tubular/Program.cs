@@ -104,7 +104,13 @@ namespace Tubular
                 var statusBar = new StatusBar(new []
                 {
                     new StatusItem(Key.CtrlMask | Key.q, "~Ctrl+Q~ Quit", () => {}),
-                    new StatusItem(Key.f, "~F~ Filter", () => filterText.SetFocus())
+                    new StatusItem(Key.CtrlMask | Key.f, "~Ctrl+F~ Filter", () => filterText.SetFocus()),
+                    new StatusItem(Key.p, "~P~ Play", () =>
+                    {
+                        var entry = filtered[videoList.SelectedItem].entry;
+                        Utils.StartRedirectedProcess("mpv", entry.Link.Href);
+                        MessageBox.Query("", $"Playing video:\n{entry.Title}", "OK");
+                    })
                 });
                 
                 Application.Top.Add(menuBar, filterText, videoList, statusBar);
