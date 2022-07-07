@@ -28,6 +28,8 @@ namespace Tubular
 
         private static readonly HttpClient httpClient = new(new HttpClientHandler{ MaxConnectionsPerServer = 2 });
         private static readonly XmlSerializer xmlSerializer = new(typeof(Feed));
+
+        private static bool showingLatest;
         
         private static async Task Main(string[] args)
         {
@@ -57,7 +59,7 @@ namespace Tubular
                 return x.Entry;
             }).Where(x => x.Published > DateTime.Now - TimeSpan.FromDays(maxTime)).OrderByDescending(x => x.Published)
               .Select(x => new Video($"[{x.Published:yy/MM/dd}] {x.Author.Name.PadRight(padding)} {x.Title}", x)).ToList();
-            var filtered = new List<Video>(videos);
+            var filtered = videos.ToList();
 
             try
             {
@@ -97,6 +99,7 @@ namespace Tubular
                 {
                     var text = filterText.Text.ToString()?.ToLowerInvariant();
                     Debug.Assert(text != null, nameof(text) + " != null");
+                    showingLatest = false;
                     filtered = videos.Where(y => y.title.ToLowerInvariant().Contains(text)).ToList();
                     videoList.SetSource(filtered.Select(y => y.title).ToList());
                 };
@@ -110,6 +113,21 @@ namespace Tubular
                         var entry = filtered[videoList.SelectedItem].entry;
                         Utils.StartRedirectedProcess("mpv", entry.Link.Href);
                         MessageBox.Query("", $"Playing video:\n{entry.Title}", "OK");
+                    }),
+                    new StatusItem(Key.l, "~L~ Latest", () =>
+                    {
+                        if(showingLatest)
+                        {
+                            filtered = videos.ToList();
+                            videoList.SetSource(filtered.Select(y => y.title).ToList());
+                        }
+                        else
+                        {
+                            filtered = videos.GroupBy(x => x.entry.Author.Name).Select(x => x.First()).ToList();
+                            videoList.SetSource(filtered.Select(y => y.title).ToList());
+                        }
+
+                        showingLatest = !showingLatest;
                     })
                 });
                 
