@@ -10,6 +10,9 @@ using System.Xml.Serialization;
 using Terminal.Gui;
 using System.CommandLine;
 
+// TODO: color each author differently
+// TODO: hide search bar when its empty
+
 namespace Tubular
 {
     public static class Program
@@ -28,8 +31,6 @@ namespace Tubular
 
         private static readonly HttpClient httpClient = new(new HttpClientHandler{ MaxConnectionsPerServer = 2 });
         private static readonly XmlSerializer xmlSerializer = new(typeof(Feed));
-
-        private static bool showingLatest;
         
         private static async Task Main(string[] args)
         {
@@ -45,8 +46,6 @@ namespace Tubular
             await rootCommand.InvokeAsync(args);
         }
 
-        private record Video(string title, Entry entry);
-
         private static async Task Run(bool noUpdate, string? filter, int maxTime)
         {
             var feeds = await GetFeeds(noUpdate, filter);
@@ -59,80 +58,12 @@ namespace Tubular
                 return x.Entry;
             }).Where(x => x.Published > DateTime.Now - TimeSpan.FromDays(maxTime)).OrderByDescending(x => x.Published)
               .Select(x => new Video($"[{x.Published:yy/MM/dd}] {x.Author.Name.PadRight(padding)} {x.Title}", x)).ToList();
-            var filtered = videos.ToList();
 
             try
             {
                 Application.Init();
                 Application.IsMouseDisabled = true;
-                
-                var menuBar = new MenuBar(new[]{
-                    new MenuBarItem("File", new[]{
-                        new MenuItem("Quit", "", () => Application.RequestStop())
-                    }),
-                });
-
-                var videoList = new ListView(filtered.Select(x => x.title).ToList()){ X = 0, Y = 2, Width = Dim.Fill(), Height = Dim.Fill() - 1 };
-                videoList.OpenSelectedItem += x =>
-                {
-                    var entry = filtered[x.Item].entry;
-                    var val = MessageBox.Query("", $"{entry.Author.Name}\n{entry.Title}\n{entry.Published}", "Play", "Link", "Channel", "Cancel");
-                    switch(val)
-                    {
-                        case 0:
-                            Utils.StartRedirectedProcess("mpv", entry.Link.Href);
-                            MessageBox.Query("", $"Playing video:\n{entry.Title}", "OK");
-                            break;
-                        
-                        case 1:
-                            Process.Start(new ProcessStartInfo(entry.Link.Href){ UseShellExecute = true });
-                            break;
-                        
-                        case 2:
-                            Process.Start(new ProcessStartInfo(entry.Author.Uri){ UseShellExecute = true });
-                            break;
-                    }
-                };
-
-                var filterText = new TextField(){ X = 0, Y = 1, Width = Dim.Fill(), Height = 1 };
-                filterText.TextChanged += x =>
-                {
-                    var text = filterText.Text.ToString()?.ToLowerInvariant();
-                    Debug.Assert(text != null, nameof(text) + " != null");
-                    showingLatest = false;
-                    filtered = videos.Where(y => y.title.ToLowerInvariant().Contains(text)).ToList();
-                    videoList.SetSource(filtered.Select(y => y.title).ToList());
-                };
-
-                var statusBar = new StatusBar(new []
-                {
-                    new StatusItem(Key.CtrlMask | Key.q, "~Ctrl+Q~ Quit", () => {}),
-                    new StatusItem(Key.CtrlMask | Key.f, "~Ctrl+F~ Filter", () => filterText.SetFocus()),
-                    new StatusItem(Key.p, "~P~ Play", () =>
-                    {
-                        var entry = filtered[videoList.SelectedItem].entry;
-                        Utils.StartRedirectedProcess("mpv", entry.Link.Href);
-                        MessageBox.Query("", $"Playing video:\n{entry.Title}", "OK");
-                    }),
-                    new StatusItem(Key.l, "~L~ Latest", () =>
-                    {
-                        if(showingLatest)
-                        {
-                            filtered = videos.ToList();
-                            videoList.SetSource(filtered.Select(y => y.title).ToList());
-                        }
-                        else
-                        {
-                            filtered = videos.GroupBy(x => x.entry.Author.Name).Select(x => x.First()).ToList();
-                            videoList.SetSource(filtered.Select(y => y.title).ToList());
-                        }
-
-                        showingLatest = !showingLatest;
-                    })
-                });
-                
-                Application.Top.Add(menuBar, filterText, videoList, statusBar);
-                Application.Run();
+                Application.Run(new MainWindow(videos));
             }
             finally
             {
