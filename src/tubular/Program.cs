@@ -10,7 +10,6 @@ using System.Xml.Serialization;
 using Terminal.Gui;
 using System.CommandLine;
 
-// TODO: color each author differently
 // TODO: hide search bar when its empty
 
 namespace Tubular
