@@ -13,6 +13,7 @@ namespace Tubular
         private List<Video> filteredVideos;
         private bool showingLatest;
         private readonly Dictionary<string, Color> authorColors = new();
+        private bool openVideosFullscreen;
 
         public MainWindow(List<Video> videos)
         {
@@ -23,8 +24,20 @@ namespace Tubular
 
         private void CreateWindow()
         {
-            var filterText = new TextField(){ Width = Dim.Fill(), Height = 1, ColorScheme = Colors.Dialog };
-            var videoList = new ListView(filteredVideos.Select(x => x.title).ToList()){ Y = Pos.Bottom(filterText), Width = Dim.Fill(), Height = Dim.Fill() };
+            var menuBar = new MenuBar(new[]
+            {
+                new MenuBarItem("File", new[]
+                {
+                    new MenuItem("Quit", "", () => Application.RequestStop())
+                }),
+                new MenuBarItem("Settings", new []
+                {
+                    new MenuItem("Open videos fullscreen", "", () => openVideosFullscreen = !openVideosFullscreen)
+                })
+            });
+            
+            var filterText = new TextField(){ Y = Pos.Bottom(menuBar), Width = Dim.Fill(), Height = 1, ColorScheme = Colors.Dialog };
+            var videoList = new ListView(filteredVideos.Select(x => x.title).ToList()){ Y = Pos.Bottom(filterText), Width = Dim.Fill(), Height = Dim.Fill(1) };
 
             videoList.RowRender += args =>
             {
@@ -54,12 +67,13 @@ namespace Tubular
 
             var statusBar = new StatusBar(new []
             {
-                new StatusItem(Key.CtrlMask | Key.Q, "~Ctrl+Q~ Quit", () => Application.RequestStop()),
+                new StatusItem(Key.Unknown, "~Ctrl+Q~ Quit", () => {}),
+                new StatusItem(Key.Unknown, "~F9~ Menu", () => {}),
                 new StatusItem(Key.CtrlMask | Key.F, "~Ctrl+F~ Filter", () => filterText.SetFocus()),
                 new StatusItem(Key.Enter, "~Enter~ Play", () =>
                 {
                     var entry = filteredVideos[videoList.SelectedItem].entry;
-                    Utils.StartRedirectedProcess("mpv", entry.Link.Href);
+                    Utils.StartRedirectedProcess("mpv", $"{(openVideosFullscreen ? "-fs " : "")}{entry.Link.Href}");
                     MessageBox.Query("", $"Playing video:\n{entry.Title}", "OK");
                 }),
                 new StatusItem(Key.l, "~L~ Latest", () =>
@@ -75,17 +89,16 @@ namespace Tubular
                     switch(val)
                     {
                         case 0:
-                            Process.Start(new ProcessStartInfo(entry.Link.Href){ UseShellExecute = true });
+                            Utils.ShellExecute(entry.Link.Href);
                             break;
-                    
                         case 1:
-                            Process.Start(new ProcessStartInfo(entry.Author.Uri){ UseShellExecute = true });
+                            Utils.ShellExecute(entry.Author.Uri);
                             break;
                     }
                 })
             });
 
-            Add(filterText, videoList, statusBar);
+            Add(menuBar, filterText, videoList, statusBar);
         }
     }
 

@@ -4,13 +4,13 @@ namespace Tubular
 {
     public static class Utils
     {
-        public static void StartRedirectedProcess(string filepath, string args)
+        public static void StartRedirectedProcess(string fileName, string args)
         {
             var proc = new Process
             {
                 StartInfo = new ProcessStartInfo
                 {
-                    FileName = filepath,
+                    FileName = fileName,
                     Arguments = args,
                     RedirectStandardOutput = true,
                     RedirectStandardError = true,
@@ -25,6 +25,11 @@ namespace Tubular
             proc.Start();
             proc.BeginErrorReadLine();
             proc.BeginOutputReadLine();
+        }
+
+        public static void ShellExecute(string fileName)
+        {
+            Process.Start(new ProcessStartInfo(fileName){ UseShellExecute = true });
         }
     }
 }
